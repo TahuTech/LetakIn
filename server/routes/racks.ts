@@ -38,7 +38,7 @@ racksRouter.post("/", async (req: Request, res: Response) => {
   }
 });
 
-racksRouter.get("/:id", async (req: Request, res: Response) => {
+racksRouter.get("/:id", async (req: Request<{ id: string }>, res: Response) => {
   const rack = await prisma.rack.findUnique({
     where: { id: req.params.id },
     include: {
@@ -55,7 +55,7 @@ racksRouter.get("/:id", async (req: Request, res: Response) => {
   res.json(rack);
 });
 
-racksRouter.put("/:id", async (req: Request, res: Response) => {
+racksRouter.put("/:id", async (req: Request<{ id: string }>, res: Response) => {
   const { name, rows, cols } = req.body;
 
   const rack = await prisma.rack.findUnique({
@@ -88,7 +88,7 @@ racksRouter.put("/:id", async (req: Request, res: Response) => {
   res.json(updated);
 });
 
-racksRouter.delete("/:id", async (req: Request, res: Response) => {
+racksRouter.delete("/:id", async (req: Request<{ id: string }>, res: Response) => {
   const rack = await prisma.rack.findUnique({
     where: { id: req.params.id },
     include: { bins: { include: { items: true } } },

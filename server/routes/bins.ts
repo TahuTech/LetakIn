@@ -60,7 +60,7 @@ binsRouter.post("/", async (req: Request, res: Response) => {
   res.status(201).json(bin);
 });
 
-binsRouter.put("/:id", async (req: Request, res: Response) => {
+binsRouter.put("/:id", async (req: Request<{ id: string }>, res: Response) => {
   const bin = await prisma.bin.findUnique({
     where: { id: req.params.id },
     include: { rack: { include: { bins: true } } },
@@ -100,7 +100,7 @@ binsRouter.put("/:id", async (req: Request, res: Response) => {
   res.json(updated);
 });
 
-binsRouter.delete("/:id", async (req: Request, res: Response) => {
+binsRouter.delete("/:id", async (req: Request<{ id: string }>, res: Response) => {
   const bin = await prisma.bin.findUnique({
     where: { id: req.params.id },
     include: { items: true },

@@ -1,28 +1,35 @@
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import ItemForm from "../components/ItemForm";
-import { useItems, useCategories } from "../hooks/api";
+import { useItems, useCategories, useRacks } from "../hooks/api";
 import { isLowStock } from "../lib/utils";
 
 function ItemsPageInner() {
-  const { data: items = [] } = useItems();
-  const { data: categories = [] } = useCategories();
   const [q, setQ] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
+  const [filterRack, setFilterRack] = useState("");
   // Baca ?filter=low dari URL secara manual (lebih sederhana)
   const [filterLow, setFilterLow] = useState(
     typeof window !== "undefined" && new URLSearchParams(window.location.search).get("filter") === "low"
   );
   const [showForm, setShowForm] = useState(false);
+  const [page, setPage] = useState(1);
+  const { data: itemPage } = useItems({
+    page,
+    q,
+    categoryId: filterCategory,
+    rackId: filterRack,
+    lowStock: filterLow,
+  });
+  const { data: categories = [] } = useCategories();
+  const { data: racks = [] } = useRacks();
+  const items = itemPage?.items ?? [];
+  const total = itemPage?.total ?? 0;
+  const totalPages = itemPage?.totalPages ?? 0;
 
-  const filtered = useMemo(() => {
-    return items.filter((i) => {
-      if (q && !i.name.toLowerCase().includes(q.toLowerCase())) return false;
-      if (filterCategory && i.category?.id !== filterCategory) return false;
-      if (filterLow && i.quantity > i.minStock) return false;
-      return true;
-    });
-  }, [items, q, filterCategory, filterLow]);
+  function resetPage() {
+    setPage(1);
+  }
 
   return (
     <div className="space-y-4">
@@ -44,13 +51,19 @@ function ItemsPageInner() {
       <div className="card-retro p-4 flex flex-wrap gap-3 items-center">
         <input
           value={q}
-          onChange={(e) => setQ(e.target.value)}
+          onChange={(e) => {
+            setQ(e.target.value);
+            resetPage();
+          }}
           placeholder="🔍 Cari nama barang..."
           className="input-retro flex-1 min-w-48"
         />
         <select
           value={filterCategory}
-          onChange={(e) => setFilterCategory(e.target.value)}
+          onChange={(e) => {
+            setFilterCategory(e.target.value);
+            resetPage();
+          }}
           className="input-retro w-auto"
         >
           <option value="">Semua kategori</option>
@@ -60,11 +73,29 @@ function ItemsPageInner() {
             </option>
           ))}
         </select>
+        <select
+          value={filterRack}
+          onChange={(e) => {
+            setFilterRack(e.target.value);
+            resetPage();
+          }}
+          className="input-retro w-auto"
+        >
+          <option value="">Semua rak</option>
+          {racks.map((rack) => (
+            <option key={rack.id} value={rack.id}>
+              {rack.code} - {rack.name}
+            </option>
+          ))}
+        </select>
         <label className="flex items-center gap-2 text-sm font-bold cursor-pointer select-none min-h-[40px]">
           <input
             type="checkbox"
             checked={filterLow}
-            onChange={(e) => setFilterLow(e.target.checked)}
+            onChange={(e) => {
+              setFilterLow(e.target.checked);
+              resetPage();
+            }}
             className="w-5 h-5 accent-retro-pink"
           />
           <span className={filterLow ? "text-retro-pink" : ""}>
@@ -84,14 +115,14 @@ function ItemsPageInner() {
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
+            {items.length === 0 ? (
               <tr>
                 <td colSpan={4} className="!py-8 text-center text-ink/40 font-semibold">
                   Tidak ada barang yang cocok. 🤷
                 </td>
               </tr>
             ) : (
-              filtered.map((item) => {
+              items.map((item) => {
                 const low = isLowStock(item);
                 return (
                   <tr key={item.id}>
@@ -141,8 +172,29 @@ function ItemsPageInner() {
         </table>
       </div>
       <p className="text-xs text-ink/40 font-semibold">
-        {filtered.length} dari {items.length} barang
+        Menampilkan {items.length} dari {total} barang
       </p>
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3">
+          <button
+            className="btn-ghost"
+            disabled={page === 1}
+            onClick={() => setPage((current) => current - 1)}
+          >
+            Sebelumnya
+          </button>
+          <span className="text-sm font-bold">
+            Halaman {page} dari {totalPages}
+          </span>
+          <button
+            className="btn-ghost"
+            disabled={page === totalPages}
+            onClick={() => setPage((current) => current + 1)}
+          >
+            Berikutnya
+          </button>
+        </div>
+      )}
     </div>
   );
 }
