@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-cream text-ink font-body antialiased;
+    background-image: radial-gradient(#3e2f2312 1.5px, transparent 1.5px);
+    background-size: 22px 22px;
+  }
+
+  h1, h2, h3 {
+    @apply font-display tracking-wide;
+  }
+
+  /* Focus ring kuning untuk aksesibilitas keyboard */
+  *:focus-visible {
+    @apply outline-none ring-4 ring-retro-yellow ring-offset-2 ring-offset-cream;
+  }
+}
+
+@layer components {
+  /* ===== Kartu ===== */
+  .card-retro {
+    @apply bg-paper border-2 border-ink rounded-xl shadow-retro;
+  }
+
+  /* ===== Tombol ===== */
+  .btn-retro {
+    @apply inline-flex items-center justify-center gap-1.5 border-2 border-ink rounded-xl
+      font-bold shadow-retro px-4 py-2 text-sm cursor-pointer select-none
+      transition-all duration-100 min-h-[40px]
+      hover:shadow-retro-lg hover:-translate-x-0.5 hover:-translate-y-0.5
+      active:shadow-none active:translate-x-1 active:translate-y-1
+      disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-retro;
+  }
+  .btn-primary {
+    @apply btn-retro bg-retro-orange text-white;
+  }
+  .btn-teal {
+    @apply btn-retro bg-retro-teal text-white;
+  }
+  .btn-yellow {
+    @apply btn-retro bg-retro-yellow text-ink;
+  }
+  .btn-danger {
+    @apply btn-retro bg-retro-pink text-white;
+  }
+  .btn-ghost {
+    @apply btn-retro bg-paper text-ink;
+  }
+
+  /* ===== Form ===== */
+  .input-retro {
+    @apply bg-white border-2 border-ink rounded-lg px-3 py-2 text-sm w-full
+      placeholder:text-ink/40
+      focus:ring-4 focus:ring-retro-yellow/60 focus:outline-none;
+  }
+  .label-retro {
+    @apply block text-xs font-bold uppercase tracking-wide text-ink/70 mb-1;
+  }
+
+  /* ===== Badge ===== */
+  .badge-retro {
+    @apply inline-flex items-center border-2 border-ink rounded-lg px-2 py-0.5
+      text-[11px] font-bold uppercase tracking-wide shadow-retro-sm;
+  }
+
+  /* ===== Tabel ===== */
+  .table-retro {
+    @apply w-full text-sm border-collapse;
+  }
+  .table-retro thead {
+    @apply bg-retro-yellow text-ink;
+  }
+  .table-retro thead th {
+    @apply px-4 py-2.5 text-left font-bold border-b-2 border-ink uppercase text-xs tracking-wide;
+  }
+  .table-retro tbody tr {
+    @apply border-b border-ink/10 transition-colors;
+  }
+  .table-retro tbody tr:nth-child(even) {
+    @apply bg-cream/60;
+  }
+  .table-retro tbody tr:hover {
+    @apply bg-retro-yellow/20;
+  }
+  .table-retro tbody td {
+    @apply px-4 py-2.5;
+  }
+
+  /* ===== Link ===== */
+  .link-retro {
+    @apply text-retro-sky font-semibold underline decoration-2 underline-offset-2
+      hover:text-retro-orange hover:decoration-retro-orange transition-colors;
+  }
+}

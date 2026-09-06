@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Rack {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique
+  rows      Int      @default(4)
+  cols      Int      @default(3)
+  bins      Bin[]
+  createdAt DateTime @default(now())
+}
+
+model Bin {
+  id        String   @id @default(cuid())
+  rackId    String
+  rack      Rack     @relation(fields: [rackId], references: [id], onDelete: Cascade)
+  label     String
+  row       Int
+  col       Int
+  rowSpan   Int      @default(1)
+  colSpan   Int      @default(1)
+  color     String?
+  items     Item[]
+  createdAt DateTime @default(now())
+
+  @@unique([rackId, row, col])
+}
+
+model Category {
+  id    String @id @default(cuid())
+  name  String @unique
+  items Item[]
+}
+
+model Item {
+  id           String        @id @default(cuid())
+  name         String
+  description  String?
+  categoryId   String?
+  category     Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  binId        String?
+  bin          Bin?          @relation(fields: [binId], references: [id], onDelete: SetNull)
+  quantity     Int           @default(0)
+  minStock     Int           @default(5)
+  unit         String        @default("pcs")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  transactions Transaction[]
+}
+
+model Transaction {
+  id        String   @id @default(cuid())
+  itemId    String
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  type      String // "in", "out", "adjust"
+  quantity  Int
+  note      String?
+  createdAt DateTime @default(now())
+}
