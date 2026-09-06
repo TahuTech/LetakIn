@@ -1,13 +1,12 @@
 import { Link } from "@tanstack/react-router";
-import { isLowStock } from "../lib/utils";
-import { useItems, useTransactions, useRacks } from "../hooks/api";
+import { useDashboardSummary, useRacks, useTransactions } from "../hooks/api";
 
 export function DashboardPage() {
-  const { data: items = [] } = useItems();
-  const { data: transactions = [] } = useTransactions();
+  const { data: summary } = useDashboardSummary();
+  const { data: transactionPage } = useTransactions({ page: 1, pageSize: 8 });
   const { data: racks = [] } = useRacks();
-
-  const lowStock = items.filter((i) => isLowStock(i));
+  const lowStock = summary?.lowStockItems ?? [];
+  const transactions = transactionPage?.items ?? [];
 
   return (
     <div className="space-y-6">
@@ -16,18 +15,18 @@ export function DashboardPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
           label="Total Barang"
-          value={items.length}
+          value={summary?.totalItems ?? 0}
           to="/items"
           color="bg-retro-orange"
           icon="📦"
         />
         <StatCard
           label="Stok Menipis"
-          value={lowStock.length}
+          value={summary?.lowStockCount ?? 0}
           to="/items?filter=low"
           color="bg-retro-pink"
           icon="⚠️"
-          alert={lowStock.length > 0}
+          alert={(summary?.lowStockCount ?? 0) > 0}
         />
         <StatCard
           label="Jumlah Rak"
@@ -38,7 +37,7 @@ export function DashboardPage() {
         />
         <StatCard
           label="Total Unit"
-          value={items.reduce((s, i) => s + i.quantity, 0)}
+          value={summary?.totalUnits ?? 0}
           color="bg-retro-sky"
           icon="✦"
         />

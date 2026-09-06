@@ -67,6 +67,21 @@ export type ItemDetail = ItemSummary & {
   transactions: Transaction[];
 };
 
+export type Paginated<T> = {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+export type DashboardSummary = {
+  totalItems: number;
+  totalUnits: number;
+  lowStockCount: number;
+  lowStockItems: ItemSummary[];
+};
+
 // ---- Hooks ----
 
 export function useRacks() {
@@ -113,10 +128,33 @@ export function useDeleteRack() {
   });
 }
 
-export function useItems() {
+export function useItems({
+  page,
+  pageSize = 25,
+  q,
+  categoryId,
+  rackId,
+  lowStock,
+}: {
+  page: number;
+  pageSize?: number;
+  q?: string;
+  categoryId?: string;
+  rackId?: string;
+  lowStock?: boolean;
+}) {
+  const params = new URLSearchParams({
+    page: String(page),
+    pageSize: String(pageSize),
+  });
+  if (q) params.set("q", q);
+  if (categoryId) params.set("categoryId", categoryId);
+  if (rackId) params.set("rackId", rackId);
+  if (lowStock) params.set("lowStock", "true");
+
   return useQuery({
-    queryKey: ["items"],
-    queryFn: () => api.get<ItemSummary[]>("/items"),
+    queryKey: ["items", { page, pageSize, q, categoryId, rackId, lowStock }],
+    queryFn: () => api.get<Paginated<ItemSummary>>(`/items?${params}`),
   });
 }
 
@@ -179,10 +217,31 @@ export function useDeleteItem() {
   });
 }
 
-export function useTransactions() {
+export function useDashboardSummary() {
   return useQuery({
-    queryKey: ["transactions"],
-    queryFn: () => api.get<Transaction[]>("/transactions"),
+    queryKey: ["items", "summary"],
+    queryFn: () => api.get<DashboardSummary>("/items/summary"),
+  });
+}
+
+export function useTransactions({
+  page,
+  pageSize = 25,
+  type,
+}: {
+  page: number;
+  pageSize?: number;
+  type?: "in" | "out" | "adjust";
+}) {
+  const params = new URLSearchParams({
+    page: String(page),
+    pageSize: String(pageSize),
+  });
+  if (type) params.set("type", type);
+
+  return useQuery({
+    queryKey: ["transactions", { page, pageSize, type }],
+    queryFn: () => api.get<Paginated<Transaction>>(`/transactions?${params}`),
   });
 }
 

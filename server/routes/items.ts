@@ -1,16 +1,59 @@
+import { Prisma } from "@prisma/client";
 import { Router, Request, Response } from "express";
 import { prisma } from "../db.js";
+import { getPage, paginated } from "../pagination.js";
 
 export const itemsRouter = Router();
 
 itemsRouter.get("/", async (req: Request, res: Response) => {
-  const q = (req.query.q as string) || "";
-  const items = await prisma.item.findMany({
-    where: q ? { name: { contains: q } } : undefined,
-    include: { bin: { include: { rack: true } }, category: true },
-    orderBy: { name: "asc" },
+  const q = typeof req.query.q === "string" ? req.query.q : "";
+  const categoryId =
+    typeof req.query.categoryId === "string" ? req.query.categoryId : undefined;
+  const rackId =
+    typeof req.query.rackId === "string" ? req.query.rackId : undefined;
+  const lowStock = req.query.lowStock === "true";
+  const where: Prisma.ItemWhereInput = {
+    ...(q ? { name: { contains: q } } : {}),
+    ...(categoryId ? { categoryId } : {}),
+    ...(rackId ? { bin: { rackId } } : {}),
+    ...(lowStock ? { quantity: { lte: prisma.item.fields.minStock } } : {}),
+  };
+  const page = getPage(req);
+  const [items, total] = await prisma.$transaction([
+    prisma.item.findMany({
+      where,
+      include: { bin: { include: { rack: true } }, category: true },
+      orderBy: { name: "asc" },
+      skip: page.skip,
+      take: page.pageSize,
+    }),
+    prisma.item.count({ where }),
+  ]);
+  res.json(paginated(items, total, page));
+});
+
+itemsRouter.get("/summary", async (_req: Request, res: Response) => {
+  const lowStockWhere: Prisma.ItemWhereInput = {
+    quantity: { lte: prisma.item.fields.minStock },
+  };
+  const [totalItems, quantity, lowStockCount, lowStockItems] =
+    await prisma.$transaction([
+      prisma.item.count(),
+      prisma.item.aggregate({ _sum: { quantity: true } }),
+      prisma.item.count({ where: lowStockWhere }),
+      prisma.item.findMany({
+        where: lowStockWhere,
+        include: { bin: { include: { rack: true } }, category: true },
+        orderBy: { quantity: "asc" },
+        take: 10,
+      }),
+    ]);
+  res.json({
+    totalItems,
+    totalUnits: quantity._sum.quantity ?? 0,
+    lowStockCount,
+    lowStockItems,
   });
-  res.json(items);
 });
 
 itemsRouter.post("/", async (req: Request, res: Response) => {
@@ -42,7 +85,7 @@ itemsRouter.post("/", async (req: Request, res: Response) => {
   res.status(201).json(item);
 });
 
-itemsRouter.get("/:id", async (req: Request, res: Response) => {
+itemsRouter.get("/:id", async (req: Request<{ id: string }>, res: Response) => {
   const item = await prisma.item.findUnique({
     where: { id: req.params.id },
     include: {
@@ -58,7 +101,7 @@ itemsRouter.get("/:id", async (req: Request, res: Response) => {
   res.json(item);
 });
 
-itemsRouter.put("/:id", async (req: Request, res: Response) => {
+itemsRouter.put("/:id", async (req: Request<{ id: string }>, res: Response) => {
   const existing = await prisma.item.findUnique({ where: { id: req.params.id } });
   if (!existing) {
     res.status(404).json({ error: "Barang tidak ditemukan" });
@@ -80,7 +123,7 @@ itemsRouter.put("/:id", async (req: Request, res: Response) => {
   res.json(item);
 });
 
-itemsRouter.delete("/:id", async (req: Request, res: Response) => {
+itemsRouter.delete("/:id", async (req: Request<{ id: string }>, res: Response) => {
   const existing = await prisma.item.findUnique({ where: { id: req.params.id } });
   if (!existing) {
     res.status(404).json({ error: "Barang tidak ditemukan" });

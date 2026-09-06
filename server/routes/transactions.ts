@@ -1,15 +1,29 @@
 import { Router, Request, Response } from "express";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../db.js";
+import { getPage, paginated } from "../pagination.js";
 
 export const transactionsRouter = Router();
 
-transactionsRouter.get("/", async (_req: Request, res: Response) => {
-  const transactions = await prisma.transaction.findMany({
-    include: { item: { include: { bin: { include: { rack: true } } } } },
-    orderBy: { createdAt: "desc" },
-    take: 200,
-  });
-  res.json(transactions);
+transactionsRouter.get("/", async (req: Request, res: Response) => {
+  const type = typeof req.query.type === "string" ? req.query.type : undefined;
+  if (type && !["in", "out", "adjust"].includes(type)) {
+    res.status(400).json({ error: "type harus in, out, atau adjust" });
+    return;
+  }
+  const where: Prisma.TransactionWhereInput = type ? { type } : {};
+  const page = getPage(req);
+  const [transactions, total] = await prisma.$transaction([
+    prisma.transaction.findMany({
+      where,
+      include: { item: { include: { bin: { include: { rack: true } } } } },
+      orderBy: { createdAt: "desc" },
+      skip: page.skip,
+      take: page.pageSize,
+    }),
+    prisma.transaction.count({ where }),
+  ]);
+  res.json(paginated(transactions, total, page));
 });
 
 transactionsRouter.post("/", async (req: Request, res: Response) => {

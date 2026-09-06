@@ -1,12 +1,41 @@
 import { Link } from "@tanstack/react-router";
 import { useTransactions } from "../hooks/api";
+import { useState } from "react";
 
 export function TransactionsPage() {
-  const { data: transactions = [] } = useTransactions();
+  const [page, setPage] = useState(1);
+  const [type, setType] = useState<"in" | "out" | "adjust" | "">("");
+  const { data: transactionPage } = useTransactions({ page, type: type || undefined });
+  const transactions = transactionPage?.items ?? [];
+  const totalPages = transactionPage?.totalPages ?? 0;
 
   return (
     <div className="space-y-4">
       <h1 className="text-3xl">🧾 Riwayat Transaksi</h1>
+
+      <div className="card-retro p-4">
+        <label className="flex items-center gap-3 font-bold">
+          Tipe
+          <select
+            value={type}
+            onChange={(event) => {
+              const selectedType = event.target.value;
+              setType(
+                selectedType === "in" || selectedType === "out" || selectedType === "adjust"
+                  ? selectedType
+                  : ""
+              );
+              setPage(1);
+            }}
+            className="input-retro w-auto"
+          >
+            <option value="">Semua transaksi</option>
+            <option value="in">IN</option>
+            <option value="out">OUT</option>
+            <option value="adjust">ADJUST</option>
+          </select>
+        </label>
+      </div>
 
       <div className="card-retro overflow-hidden overflow-x-auto">
         <table className="table-retro">
@@ -74,6 +103,30 @@ export function TransactionsPage() {
           </tbody>
         </table>
       </div>
+      <p className="text-xs text-ink/40 font-semibold">
+        Menampilkan {transactions.length} dari {transactionPage?.total ?? 0} transaksi
+      </p>
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3">
+          <button
+            className="btn-ghost"
+            disabled={page === 1}
+            onClick={() => setPage((current) => current - 1)}
+          >
+            Sebelumnya
+          </button>
+          <span className="text-sm font-bold">
+            Halaman {page} dari {totalPages}
+          </span>
+          <button
+            className="btn-ghost"
+            disabled={page === totalPages}
+            onClick={() => setPage((current) => current + 1)}
+          >
+            Berikutnya
+          </button>
+        </div>
+      )}
     </div>
   );
 }
