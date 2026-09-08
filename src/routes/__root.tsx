@@ -6,6 +6,7 @@ const NAV = [
   { to: "/racks", label: "Rak", icon: "🗄️" },
   { to: "/items", label: "Barang", icon: "📦" },
   { to: "/transactions", label: "Riwayat", icon: "🧾" },
+  { to: "/settings", label: "Pengaturan", icon: "⚙️" },
 ] as const;
 
 export function RootLayout() {

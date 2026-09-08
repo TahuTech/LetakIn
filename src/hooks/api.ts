@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
+import { downloadBlob, filenameFromDisposition } from "../lib/utils";
 
 // ---- Types ----
 
@@ -270,6 +271,77 @@ export function useCreateCategory() {
   return useMutation({
     mutationFn: (name: string) => api.post<Category>("/categories", { name }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["categories"] }),
+  });
+}
+
+// ---- Backup (export/import) ----
+
+export type ImportResult = {
+  ok: boolean;
+  restored: {
+    racks: number;
+    bins: number;
+    categories: number;
+    items: number;
+    transactions: number;
+  };
+};
+
+/** Unduh file dari endpoint export (JSON atau CSV). */
+async function downloadFile(path: string, fallbackName: string) {
+  const res = await fetch(`/api${path}`);
+  if (!res.ok) throw new Error("Gagal mengunduh data");
+  const text = await res.text();
+  const header = res.headers.get("Content-Disposition");
+  const filename = filenameFromDisposition(header, fallbackName);
+  const type = path.endsWith(".csv") ? "text/csv" : "application/json";
+  downloadBlob(text, filename, type);
+}
+
+export function useExportJson() {
+  return useMutation({
+    mutationFn: () => downloadFile("/export", "letakin-backup.json"),
+  });
+}
+
+export function useExportCsv() {
+  return useMutation({
+    mutationFn: () => downloadFile("/export/items.csv", "letakin-barang.csv"),
+  });
+}
+
+export function useImportData() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (backup: unknown) =>
+      api.post<ImportResult>("/import", backup),
+    onSuccess: () => {
+      // Semua data berubah total — invalidate semua
+      qc.invalidateQueries();
+    },
+  });
+}
+
+export type BulkItemRow = {
+  name: string;
+  description?: string;
+  categoryId?: string;
+  binId?: string;
+  quantity?: number;
+  minStock?: number;
+  unit?: string;
+};
+
+export function useBulkCreateItems() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (items: BulkItemRow[]) =>
+      api.post<{ created: number }>("/items/bulk", { items }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["items"] });
+      qc.invalidateQueries({ queryKey: ["racks"] });
+      qc.invalidateQueries({ queryKey: ["transactions"] });
+    },
   });
 }
 

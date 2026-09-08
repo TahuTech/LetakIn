@@ -30,9 +30,12 @@ Akses dari HP/tablet di jaringan yang sama: `npm run dev:client -- --host` lalu 
   - Setiap rak punya ukuran grid sendiri (baris × kolom)
   - Bin bisa span multi-sel (bin besar/kecil campur dalam satu rak)
   - Mode Edit: klik sel kosong untuk tambah bin, klik bin untuk edit/pindah/hapus, warna custom
-- **Barang** — daftar lengkap dengan search, filter kategori, filter stok menipis
+- **Barang** — daftar lengkap dengan search, filter kategori, filter stok menipis, pagination
+- **Tambah Banyak** — input multi-baris untuk menambah banyak barang sekaligus
+- **Kategori** — tambah kategori baru langsung dari dropdown form barang
 - **Transaksi** — catat barang masuk/keluar dengan catatan; stok ter-update otomatis
 - **Stok menipis** — otomatis ditandai merah saat `quantity <= minStock`
+- **Pengaturan** (`/settings`) — ekspor backup JSON (semua data) & CSV barang, impor backup (ganti semua data)
 
 ## Struktur
 

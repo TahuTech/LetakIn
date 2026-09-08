@@ -85,6 +85,58 @@ itemsRouter.post("/", async (req: Request, res: Response) => {
   res.status(201).json(item);
 });
 
+itemsRouter.post("/bulk", async (req: Request, res: Response) => {
+  const rows = req.body?.items;
+  if (!Array.isArray(rows) || rows.length === 0) {
+    res.status(400).json({ error: "Body harus berisi array items (minimal 1)" });
+    return;
+  }
+  if (rows.length > 200) {
+    res.status(400).json({ error: "Maksimal 200 barang per submit" });
+    return;
+  }
+  // Validasi: setiap baris wajib punya nama
+  for (let i = 0; i < rows.length; i++) {
+    if (!rows[i]?.name || !String(rows[i].name).trim()) {
+      res.status(400).json({ error: `Baris ${i + 1}: nama wajib diisi` });
+      return;
+    }
+  }
+
+  try {
+    const created = await prisma.$transaction(async (tx) => {
+      let count = 0;
+      for (const r of rows) {
+        const quantity = Math.max(0, Number(r.quantity) || 0);
+        const item = await tx.item.create({
+          data: {
+            name: String(r.name).trim(),
+            description: r.description ? String(r.description).trim() : null,
+            categoryId: r.categoryId || null,
+            binId: r.binId || null,
+            quantity,
+            minStock: Math.max(0, Number(r.minStock) || 5),
+            unit: r.unit ? String(r.unit).trim() : "pcs",
+          },
+        });
+        if (quantity > 0) {
+          await tx.transaction.create({
+            data: { itemId: item.id, type: "in", quantity, note: "Stok awal" },
+          });
+        }
+        count++;
+      }
+      return count;
+    });
+    res.status(201).json({ created });
+  } catch (e) {
+    console.error("Bulk create gagal:", e);
+    res.status(400).json({
+      error: "Gagal menyimpan. Pastikan kategori/lokasi yang dipilih valid.",
+    });
+  }
+});
+
 itemsRouter.get("/:id", async (req: Request<{ id: string }>, res: Response) => {
   const item = await prisma.item.findUnique({
     where: { id: req.params.id },
