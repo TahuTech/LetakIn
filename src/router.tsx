@@ -11,6 +11,7 @@ import { RackEditPage } from "./routes/racks.$rackId.edit";
 import { ItemsPage } from "./routes/items.index";
 import { ItemDetailPage } from "./routes/items.$itemId";
 import { TransactionsPage } from "./routes/transactions.index";
+import { SettingsPage } from "./routes/settings";
 
 const rootRoute = createRootRoute({
   component: RootLayout,
@@ -58,6 +59,12 @@ const transactionsRoute = createRoute({
   component: TransactionsPage,
 });
 
+const settingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/settings",
+  component: SettingsPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   racksRoute,
@@ -66,6 +73,7 @@ const routeTree = rootRoute.addChildren([
   itemsRoute,
   itemDetailRoute,
   transactionsRoute,
+  settingsRoute,
 ]);
 
 export const router = createRouter({ routeTree });

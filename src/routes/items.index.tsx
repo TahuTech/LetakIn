@@ -1,6 +1,7 @@
 import { Suspense, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import ItemForm from "../components/ItemForm";
+import BulkItemForm from "../components/BulkItemForm";
 import { useItems, useCategories, useRacks } from "../hooks/api";
 import { isLowStock } from "../lib/utils";
 
@@ -13,6 +14,8 @@ function ItemsPageInner() {
     typeof window !== "undefined" && new URLSearchParams(window.location.search).get("filter") === "low"
   );
   const [showForm, setShowForm] = useState(false);
+  const [showBulk, setShowBulk] = useState(false);
+  const [toast, setToast] = useState("");
   const [page, setPage] = useState(1);
   const { data: itemPage } = useItems({
     page,
@@ -31,13 +34,35 @@ function ItemsPageInner() {
     setPage(1);
   }
 
+  function showToastMsg(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(""), 3000);
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-3xl">📦 Barang</h1>
-        <button onClick={() => setShowForm(!showForm)} className="btn-primary">
-          + Tambah Barang
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              setShowBulk(!showBulk);
+              setShowForm(false);
+            }}
+            className="btn-teal"
+          >
+            📋 Tambah Banyak
+          </button>
+          <button
+            onClick={() => {
+              setShowForm(!showForm);
+              setShowBulk(false);
+            }}
+            className="btn-primary"
+          >
+            + Tambah Barang
+          </button>
+        </div>
       </div>
 
       {showForm && (
@@ -45,6 +70,17 @@ function ItemsPageInner() {
           categories={categories}
           onDone={() => setShowForm(false)}
           onCancel={() => setShowForm(false)}
+        />
+      )}
+
+      {showBulk && (
+        <BulkItemForm
+          categories={categories}
+          onDone={(created) => {
+            setShowBulk(false);
+            showToastMsg(`✓ ${created} barang ditambahkan`);
+          }}
+          onCancel={() => setShowBulk(false)}
         />
       )}
 
@@ -193,6 +229,12 @@ function ItemsPageInner() {
           >
             Berikutnya
           </button>
+        </div>
+      )}
+
+      {toast && (
+        <div className="fixed bottom-6 right-6 bg-retro-yellow border-2 border-ink rounded-xl shadow-retro px-4 py-2 font-bold text-sm animate-bounce z-50">
+          {toast}
         </div>
       )}
     </div>
