@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import TransactionForm from "../components/TransactionForm";
 import CategorySelect from "../components/CategorySelect";
-import { useItem, useCategories, useRacks, useUpdateItem, useDeleteItem } from "../hooks/api";
+import JenisSelect from "../components/JenisSelect";
+import { useItem, useCategories, useRacks, useUpdateItem, useDeleteItem, type JenisBarang } from "../hooks/api";
 
 export function ItemDetailPage() {
   const { itemId } = useParams({ from: "/items/$itemId" });
@@ -19,6 +20,7 @@ export function ItemDetailPage() {
   // edit fields
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [jenis, setJenis] = useState<JenisBarang>("pribadi");
   const [categoryId, setCategoryId] = useState("");
   const [binId, setBinId] = useState("");
   const [minStock, setMinStock] = useState(0);
@@ -28,6 +30,7 @@ export function ItemDetailPage() {
   if (item && !name) {
     setName(item.name);
     setDescription(item.description ?? "");
+    setJenis(item.jenis ?? "pribadi");
     setCategoryId(item.category?.id ?? "");
     setBinId(item.bin?.id ?? "");
     setMinStock(item.minStock);
@@ -48,9 +51,10 @@ export function ItemDetailPage() {
       await updateItem.mutateAsync({
         name,
         description: description || null,
+        jenis,
         categoryId: categoryId || null,
         binId: binId || null,
-        minStock,
+        minStock: jenis === "pribadi" ? 0 : minStock,
         unit,
       });
       setEditing(false);
@@ -85,7 +89,9 @@ export function ItemDetailPage() {
   if (isLoading || !item)
     return <p className="text-ink/50 py-12 text-center font-bold">Memuat... ⏳</p>;
 
-  const low = item.quantity <= item.minStock;
+  const isPribadi = item.jenis === "pribadi";
+  // Barang pribadi (minStock 0) tidak pernah "menipis"
+  const low = !isPribadi && item.quantity <= item.minStock;
 
   return (
     <div className="space-y-4">
@@ -102,14 +108,21 @@ export function ItemDetailPage() {
                 <p className="text-sm text-ink/50 font-semibold">{item.description}</p>
               )}
             </div>
-            <span
-              className={`font-display text-3xl whitespace-nowrap ${
-                low ? "text-retro-pink" : "text-retro-teal"
-              }`}
-            >
-              {item.quantity}{" "}
-              <span className="text-sm font-body font-bold">{item.unit}</span>
-            </span>
+            <div className="flex flex-col items-end gap-1">
+              <span
+                className={`badge-retro ${isPribadi ? "bg-retro-teal text-white" : "bg-retro-yellow text-ink"}`}
+              >
+                {isPribadi ? "🏠 Pribadi" : "🏷️ Dijual"}
+              </span>
+              <span
+                className={`font-display text-3xl whitespace-nowrap ${
+                  low ? "text-retro-pink" : "text-retro-teal"
+                }`}
+              >
+                {item.quantity}{" "}
+                <span className="text-sm font-body font-bold">{item.unit}</span>
+              </span>
+            </div>
           </div>
 
           {low && (
@@ -139,12 +152,14 @@ export function ItemDetailPage() {
                 )}
               </dd>
             </div>
-            <div className="flex gap-2">
-              <dt className="text-ink/50 font-bold w-28">Stok minimum</dt>
-              <dd className="font-semibold">
-                {item.minStock} {item.unit}
-              </dd>
-            </div>
+            {!isPribadi && (
+              <div className="flex gap-2">
+                <dt className="text-ink/50 font-bold w-28">Stok minimum</dt>
+                <dd className="font-semibold">
+                  {item.minStock} {item.unit}
+                </dd>
+              </div>
+            )}
           </dl>
 
           <div className="flex gap-2 pt-3 border-t-2 border-ink/10">
@@ -177,6 +192,7 @@ export function ItemDetailPage() {
                   placeholder="Deskripsi"
                 />
               </div>
+              <JenisSelect value={jenis} onChange={setJenis} />
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <span className="label-retro">Kategori</span>
@@ -201,24 +217,28 @@ export function ItemDetailPage() {
                     ))}
                   </select>
                 </div>
-                <div>
-                  <span className="label-retro">Min stok</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={minStock}
-                    onChange={(e) => setMinStock(Number(e.target.value))}
-                    className="input-retro"
-                  />
-                </div>
-                <div>
-                  <span className="label-retro">Satuan</span>
-                  <input
-                    value={unit}
-                    onChange={(e) => setUnit(e.target.value)}
-                    className="input-retro"
-                  />
-                </div>
+                {jenis === "dijual" && (
+                  <>
+                    <div>
+                      <span className="label-retro">Min stok</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={minStock}
+                        onChange={(e) => setMinStock(Number(e.target.value))}
+                        className="input-retro"
+                      />
+                    </div>
+                    <div>
+                      <span className="label-retro">Satuan</span>
+                      <input
+                        value={unit}
+                        onChange={(e) => setUnit(e.target.value)}
+                        className="input-retro"
+                      />
+                    </div>
+                  </>
+                )}
               </div>
               <button className="btn-primary">Simpan Perubahan</button>
               {error && (
@@ -227,60 +247,70 @@ export function ItemDetailPage() {
             </form>
           )}
 
-          <details className="border-t-2 border-ink/10 pt-3">
-            <summary className="text-sm link-retro cursor-pointer font-bold">
-              + Transaksi (masuk/keluar)
-            </summary>
-            <TransactionForm
-              items={[
-                { id: item.id, name: item.name, quantity: item.quantity, unit: item.unit },
-              ]}
-              onDone={() => {}}
-            />
-          </details>
-        </div>
-
-        <div className="card-retro p-4">
-          <h2 className="text-lg mb-3">🧾 Riwayat Transaksi</h2>
-          {item.transactions.length === 0 ? (
-            <p className="text-ink/50 text-sm">Belum ada transaksi.</p>
+          {isPribadi ? (
+            <div className="border-t-2 border-ink/10 pt-3">
+              <p className="text-sm text-ink/50 font-semibold">
+                🏠 Barang pribadi — stok selalu 1, tidak ada transaksi masuk/keluar.
+              </p>
+            </div>
           ) : (
-            <ul className="divide-y divide-ink/10 text-sm">
-              {item.transactions.map((tx) => (
-                <li key={tx.id} className="py-2 flex justify-between gap-2">
-                  <div>
-                    <span
-                      className={`badge-retro ${
-                        tx.type === "in"
-                          ? "bg-retro-teal text-white"
-                          : tx.type === "out"
-                            ? "bg-retro-orange text-white"
-                            : "bg-retro-sky text-white"
-                      }`}
-                    >
-                      {tx.type.toUpperCase()}
-                    </span>{" "}
-                    {tx.note && (
-                      <span className="text-ink/50 text-xs">· {tx.note}</span>
-                    )}
-                  </div>
-                  <div className="text-right whitespace-nowrap">
-                    <span className="font-display">
-                      {tx.type === "out" ? "−" : "+"}
-                      {tx.quantity}
-                    </span>
-                    <div className="text-xs text-ink/40">
-                      {new Date(tx.createdAt).toLocaleString("id-ID", {
-                        dateStyle: "short",
-                        timeStyle: "short",
-                      })}
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <details className="border-t-2 border-ink/10 pt-3">
+              <summary className="text-sm link-retro cursor-pointer font-bold">
+                + Transaksi (masuk/keluar)
+              </summary>
+              <TransactionForm
+                items={[
+                  { id: item.id, name: item.name, quantity: item.quantity, unit: item.unit },
+                ]}
+                onDone={() => {}}
+              />
+            </details>
           )}
         </div>
+
+        {!isPribadi && (
+          <div className="card-retro p-4">
+            <h2 className="text-lg mb-3">🧾 Riwayat Transaksi</h2>
+            {item.transactions.length === 0 ? (
+              <p className="text-ink/50 text-sm">Belum ada transaksi.</p>
+            ) : (
+              <ul className="divide-y divide-ink/10 text-sm">
+                {item.transactions.map((tx) => (
+                  <li key={tx.id} className="py-2 flex justify-between gap-2">
+                    <div>
+                      <span
+                        className={`badge-retro ${
+                          tx.type === "in"
+                            ? "bg-retro-teal text-white"
+                            : tx.type === "out"
+                              ? "bg-retro-orange text-white"
+                              : "bg-retro-sky text-white"
+                        }`}
+                      >
+                        {tx.type.toUpperCase()}
+                      </span>{" "}
+                      {tx.note && (
+                        <span className="text-ink/50 text-xs">· {tx.note}</span>
+                      )}
+                    </div>
+                    <div className="text-right whitespace-nowrap">
+                      <span className="font-display">
+                        {tx.type === "out" ? "−" : "+"}
+                        {tx.quantity}
+                      </span>
+                      <div className="text-xs text-ink/40">
+                        {new Date(tx.createdAt).toLocaleString("id-ID", {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

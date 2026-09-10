@@ -15,7 +15,7 @@ npm run dev       # jalankan frontend (5173) + backend API (3001) sekaligus
 
 Buka `http://localhost:5173` di browser.
 
-Akses dari HP/tablet di jaringan yang sama: `npm run dev:client -- --host` lalu buka `http://<ip-komputer>:5173`.
+Akses dari HP/tablet di jaringan yang sama: cari IP komputer (`hostname -I` atau `ip addr`), lalu buka `http://<ip-komputer>:5173` dari perangkat lain yang terhubung ke WiFi yang sama.
 
 ## Arsitektur
 
@@ -31,10 +31,17 @@ Akses dari HP/tablet di jaringan yang sama: `npm run dev:client -- --host` lalu 
   - Bin bisa span multi-sel (bin besar/kecil campur dalam satu rak)
   - Mode Edit: klik sel kosong untuk tambah bin, klik bin untuk edit/pindah/hapus, warna custom
 - **Barang** — daftar lengkap dengan search, filter kategori, filter stok menipis, pagination
-- **Tambah Banyak** — input multi-baris untuk menambah banyak barang sekaligus
+- **Jenis barang** — setiap barang salah satu dari:
+  - 🏠 **Pribadi** (default): stok terkunci 1, tanpa transaksi masuk/keluar
+  - 🏷️ **Dijual**: stok bebas, dengan transaksi & stok minimum
+- **Tambah Banyak** — dua cara:
+  - 📋 **Tabel multi-baris** — kontrol penuh per baris (jenis, kategori, lokasi, stok)
+  - ⌨️ **Teks Cepat** (barang pribadi) — satu per baris dengan sintaks `nama [@ kategori] [> bin]`; kategori dibuat otomatis, bin tidak dikenal hanya peringatan
+- **Tambah dari rak** — klik bin → tombol "➕ Barang di sini", lokasi otomatis terisi
 - **Kategori** — tambah kategori baru langsung dari dropdown form barang
-- **Transaksi** — catat barang masuk/keluar dengan catatan; stok ter-update otomatis
-- **Stok menipis** — otomatis ditandai merah saat `quantity <= minStock`
+- **Transaksi** — catat barang masuk/keluar dengan catatan; stok ter-update otomatis (khusus barang dijual)
+- **Stok menipis** — otomatis ditandai merah saat `quantity <= minStock` (khusus barang dijual)
+- **Edit layout rak** — klik sel untuk bin 1×1, **seret (drag)** untuk bin multi-sel, tombol ⚡ Isi Semua Sel & 🧹 Reset Grid, template layout saat buat rak
 - **Pengaturan** (`/settings`) — ekspor backup JSON (semua data) & CSV barang, impor backup (ganti semua data)
 
 ## Struktur

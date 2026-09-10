@@ -2,7 +2,9 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import RackGridEditor from "../components/RackGridEditor";
 import BinEditDialog, { type BinFormData } from "../components/BinEditDialog";
-import { useRack, useUpdateRack, useDeleteRack, useCreateBin, useUpdateBin, useDeleteBin, type GridBin } from "../hooks/api";
+import { useRack, useUpdateRack, useDeleteRack, useCreateBin, useUpdateBin, useDeleteBin, useResetGrid, useAutofillGrid, useAreaCheck, type GridBin } from "../hooks/api";
+
+type Area = { row: number; col: number; rowSpan: number; colSpan: number };
 
 export function RackEditPage() {
   const { rackId } = useParams({ from: "/racks/$rackId/edit" });
@@ -15,7 +17,7 @@ export function RackEditPage() {
 
   // Dialog state
   const [editingBin, setEditingBin] = useState<GridBin | null>(null);
-  const [newBinPos, setNewBinPos] = useState<{ row: number; col: number } | null>(null);
+  const [newBinArea, setNewBinArea] = useState<Area | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   // Mode pindah: klik sel kosong untuk memindahkan bin ini
@@ -29,6 +31,9 @@ export function RackEditPage() {
   const createBin = useCreateBin();
   const updateBin = useUpdateBin();
   const deleteBinMut = useDeleteBin();
+  const resetGrid = useResetGrid(rackId);
+  const autofillGrid = useAutofillGrid(rackId);
+  const areaCheck = useAreaCheck(rackId);
 
   function showToast(msg: string) {
     setToast(msg);
@@ -51,12 +56,26 @@ export function RackEditPage() {
       return;
     }
     setEditingBin(null);
-    setNewBinPos({ row, col });
+    setNewBinArea({ row, col, rowSpan: 1, colSpan: 1 });
     setDialogOpen(true);
   }
 
+  /** Dipanggil saat drag-select selesai dengan area > 1 sel. */
+  async function handleAreaSelect(area: Area) {
+    if (movingBinId) return;
+    setError("");
+    try {
+      await areaCheck.mutateAsync(area);
+      setEditingBin(null);
+      setNewBinArea(area);
+      setDialogOpen(true);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Area tidak valid");
+    }
+  }
+
   function handleBinClick(bin: GridBin) {
-    setNewBinPos(null);
+    setNewBinArea(null);
     setEditingBin(bin);
     setDialogOpen(true);
   }
@@ -79,18 +98,18 @@ export function RackEditPage() {
       if (editingBin) {
         await updateBin.mutateAsync({ id: editingBin.id, ...form });
         showToast("Bin disimpan ✓");
-      } else if (newBinPos) {
+      } else if (newBinArea) {
         await createBin.mutateAsync({
           rackId,
-          row: newBinPos.row,
-          col: newBinPos.col,
+          row: newBinArea.row,
+          col: newBinArea.col,
           ...form,
         });
         showToast("Bin dibuat ✓");
       }
       setDialogOpen(false);
       setEditingBin(null);
-      setNewBinPos(null);
+      setNewBinArea(null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Gagal menyimpan bin");
     }
@@ -110,6 +129,42 @@ export function RackEditPage() {
     }
   }
 
+  async function handleAutofill() {
+    setError("");
+    try {
+      const res = await autofillGrid.mutateAsync();
+      showToast(
+        res.created > 0
+          ? `${res.created} bin dibuat ✓`
+          : "Semua sel sudah terisi"
+      );
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Gagal mengisi sel");
+    }
+  }
+
+  async function handleResetGrid() {
+    if (!rack) return;
+    const n = rack.bins.length;
+    if (n === 0) {
+      showToast("Grid sudah kosong");
+      return;
+    }
+    if (
+      !confirm(
+        `Hapus semua ${n} bin di rak ini? Hanya bin kosong yang bisa dihapus.`
+      )
+    )
+      return;
+    setError("");
+    try {
+      const res = await resetGrid.mutateAsync();
+      showToast(`Grid direset — ${res.deleted} bin dihapus ✓`);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Gagal mereset grid");
+    }
+  }
+
   async function handleDeleteRack() {
     if (!confirm(`Hapus rak "${rack?.name}"? Semua bin di dalamnya ikut terhapus.`)) return;
     try {
@@ -125,13 +180,13 @@ export function RackEditPage() {
 
   const dialogMaxRowSpan = editingBin
     ? rows - editingBin.row
-    : newBinPos
-      ? rows - newBinPos.row
+    : newBinArea
+      ? rows - newBinArea.row
       : 1;
   const dialogMaxColSpan = editingBin
     ? cols - editingBin.col
-    : newBinPos
-      ? cols - newBinPos.col
+    : newBinArea
+      ? cols - newBinArea.col
       : 1;
 
   return (
@@ -184,7 +239,7 @@ export function RackEditPage() {
           Simpan Ukuran Grid
         </button>
         <p className="text-xs text-ink/40 w-full font-semibold">
-          Ukuran grid hanya disimpan setelah klik tombol. Klik sel kosong untuk menambah bin, klik bin untuk mengedit.
+          Ukuran grid hanya disimpan setelah klik tombol. Klik sel kosong untuk menambah bin, <b>seret</b> untuk area lebih besar, klik bin untuk mengedit.
         </p>
       </div>
 
@@ -208,7 +263,26 @@ export function RackEditPage() {
         </div>
       )}
 
-      <div className="card-retro p-4">
+      <div className="card-retro p-4 space-y-3">
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={handleAutofill}
+            disabled={!!movingBinId || autofillGrid.isPending}
+            className="btn-yellow"
+          >
+            {autofillGrid.isPending ? "Mengisi..." : "⚡ Isi Semua Sel"}
+          </button>
+          <button
+            onClick={handleResetGrid}
+            disabled={!!movingBinId || resetGrid.isPending}
+            className="btn-danger"
+          >
+            {resetGrid.isPending ? "Mereset..." : "🧹 Reset Grid"}
+          </button>
+          <span className="text-xs text-ink/40 font-semibold self-center">
+            Isi semua sel kosong dengan bin 1×1 · Reset menghapus semua bin kosong
+          </span>
+        </div>
         <RackGridEditor
           rackId={rack.id}
           rows={rows || rack.rows}
@@ -217,13 +291,19 @@ export function RackEditPage() {
           movingBinId={movingBinId}
           onCellClick={handleCellClick}
           onBinClick={handleBinClick}
+          onAreaSelect={handleAreaSelect}
         />
       </div>
 
       {dialogOpen && (
         <BinEditDialog
           bin={editingBin}
-          position={newBinPos}
+          position={newBinArea ? { row: newBinArea.row, col: newBinArea.col } : null}
+          initialSpan={
+            newBinArea
+              ? { rowSpan: newBinArea.rowSpan, colSpan: newBinArea.colSpan }
+              : undefined
+          }
           maxRowSpan={dialogMaxRowSpan}
           maxColSpan={dialogMaxColSpan}
           itemCount={editingBin?.items?.length ?? 0}
@@ -240,7 +320,7 @@ export function RackEditPage() {
           onClose={() => {
             setDialogOpen(false);
             setEditingBin(null);
-            setNewBinPos(null);
+            setNewBinArea(null);
           }}
         />
       )}

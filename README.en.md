@@ -15,7 +15,7 @@ npm run dev       # start the frontend (5173) and backend API (3001)
 
 Open `http://localhost:5173` in a browser.
 
-To access it from a phone or tablet on the same network, run `npm run dev:client -- --host`, then open `http://<computer-ip>:5173`.
+To access it from a phone or tablet on the same network, find the computer's IP address (`hostname -I` or `ip addr`), then open `http://<computer-ip>:5173` from another device connected to the same Wi-Fi.
 
 ## Architecture
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import RackGrid from "../components/RackGrid";
-import { useRacks, useCreateRack, type GridRack } from "../hooks/api";
+import { useRacks, useCreateRack, type GridRack, type RackTemplate } from "../hooks/api";
 
 export function RacksPage() {
   const { data: racks = [] } = useRacks();
@@ -10,6 +10,7 @@ export function RacksPage() {
   const [code, setCode] = useState("");
   const [rows, setRows] = useState(4);
   const [cols, setCols] = useState(3);
+  const [template, setTemplate] = useState<"" | RackTemplate>("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
   const createRack = useCreateRack();
@@ -18,10 +19,17 @@ export function RacksPage() {
     e.preventDefault();
     setError("");
     try {
-      const data = await createRack.mutateAsync({ name, code, rows, cols });
+      const data = await createRack.mutateAsync({
+        name,
+        code,
+        rows,
+        cols,
+        template: template || undefined,
+      });
       setShowForm(false);
       setName("");
       setCode("");
+      setTemplate("");
       navigate({ to: `/racks/${data.id}/edit` });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Gagal membuat rak");
@@ -84,7 +92,27 @@ export function RacksPage() {
               className="input-retro w-24"
             />
           </label>
+          <label className="text-sm">
+            <span className="label-retro">Template layout</span>
+            <select
+              value={template}
+              onChange={(e) => setTemplate(e.target.value as "" | RackTemplate)}
+              className="input-retro w-56"
+            >
+              <option value="">— Kosong —</option>
+              <option value="fill">⚡ Isi semua sel (A1, A2, …)</option>
+              <option value="rows">▤ Laci per baris (A, B, …)</option>
+              <option value="cols">▥ Kolom penuh (1, 2, …)</option>
+            </select>
+          </label>
           <button className="btn-yellow">Buat & Atur Layout</button>
+          {template && (
+            <p className="text-xs text-ink/50 w-full font-semibold">
+              {template === "fill" && "Semua sel langsung terisi bin 1×1 — tinggal hapus/gabung yang tidak perlu."}
+              {template === "rows" && "Satu bin per baris, membentang selebar rak — cocok untuk rak laci."}
+              {template === "cols" && "Satu bin per kolom, membentang setinggi rak."}
+            </p>
+          )}
           {error && (
             <p className="badge-retro bg-retro-pink text-white w-full">{error}</p>
           )}

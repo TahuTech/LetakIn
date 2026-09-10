@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { useCreateItem, useRacks, type Category } from "../hooks/api";
+import { useCreateItem, useRacks, type Category, type JenisBarang } from "../hooks/api";
 import CategorySelect from "./CategorySelect";
+import JenisSelect from "./JenisSelect";
 
 type BinOption = {
   id: string;
@@ -10,17 +11,24 @@ type BinOption = {
 
 export default function ItemForm({
   categories,
+  presetBinId,
+  lockBinLabel,
   onDone,
   onCancel,
 }: {
   categories: Category[];
+  /** Jika diisi, lokasi terkunci ke bin ini (dipakai dari tampilan rak). */
+  presetBinId?: string;
+  /** Teks lokasi read-only, mis. "Rak A → A1". Wajib ada jika presetBinId diisi. */
+  lockBinLabel?: string;
   onDone: () => void;
   onCancel: () => void;
 }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [jenis, setJenis] = useState<JenisBarang>("pribadi");
   const [categoryId, setCategoryId] = useState("");
-  const [binId, setBinId] = useState("");
+  const [binId, setBinId] = useState(presetBinId ?? "");
   const [quantity, setQuantity] = useState(0);
   const [minStock, setMinStock] = useState(5);
   const [unit, setUnit] = useState("pcs");
@@ -50,10 +58,12 @@ export default function ItemForm({
       await createItem.mutateAsync({
         name,
         description,
+        jenis,
         categoryId: categoryId || null,
         binId: binId || null,
-        quantity,
-        minStock,
+        // Barang pribadi: server memaksa qty 1 — kirim nilai apa adanya
+        quantity: jenis === "pribadi" ? 1 : quantity,
+        minStock: jenis === "pribadi" ? 0 : minStock,
         unit,
       });
       onDone();
@@ -87,60 +97,83 @@ export default function ItemForm({
             className="input-retro"
           />
         </label>
-        <label className="text-sm">
+        <div className="text-sm">
           <span className="label-retro">Kategori</span>
           <CategorySelect
             value={categoryId}
             onChange={setCategoryId}
             categories={categories}
           />
-        </label>
-        <label className="text-sm">
-          <span className="label-retro">Lokasi (Rak → Bin)</span>
-          <select
-            value={binId}
-            onChange={(e) => setBinId(e.target.value)}
-            className="input-retro"
-          >
-            <option value="">— Belum ditempatkan —</option>
-            {bins.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.rackName} → {b.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-sm">
-          <span className="label-retro">Jumlah Awal</span>
-          <input
-            type="number"
-            min={0}
-            value={quantity}
-            onChange={(e) => setQuantity(Number(e.target.value))}
-            className="input-retro"
-          />
-        </label>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="text-sm">
-            <span className="label-retro">Stok Minimum</span>
-            <input
-              type="number"
-              min={0}
-              value={minStock}
-              onChange={(e) => setMinStock(Number(e.target.value))}
-              className="input-retro"
-            />
-          </label>
-          <label className="text-sm">
-            <span className="label-retro">Satuan</span>
-            <input
-              value={unit}
-              onChange={(e) => setUnit(e.target.value)}
-              className="input-retro"
-            />
-          </label>
         </div>
+        {presetBinId && lockBinLabel ? (
+          <div className="text-sm">
+            <span className="label-retro">Lokasi</span>
+            <div className="input-retro bg-retro-yellow/20 border-ink font-bold flex items-center gap-1.5 cursor-default">
+              📍 {lockBinLabel}
+            </div>
+          </div>
+        ) : (
+          <label className="text-sm">
+            <span className="label-retro">Lokasi (Rak → Bin)</span>
+            <select
+              value={binId}
+              onChange={(e) => setBinId(e.target.value)}
+              className="input-retro"
+            >
+              <option value="">— Belum ditempatkan —</option>
+              {bins.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.rackName} → {b.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {jenis === "dijual" ? (
+          <>
+            <label className="text-sm">
+              <span className="label-retro">Jumlah Awal</span>
+              <input
+                type="number"
+                min={0}
+                value={quantity}
+                onChange={(e) => setQuantity(Number(e.target.value))}
+                className="input-retro"
+              />
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="text-sm">
+                <span className="label-retro">Stok Minimum</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={minStock}
+                  onChange={(e) => setMinStock(Number(e.target.value))}
+                  className="input-retro"
+                />
+              </label>
+              <label className="text-sm">
+                <span className="label-retro">Satuan</span>
+                <input
+                  value={unit}
+                  onChange={(e) => setUnit(e.target.value)}
+                  className="input-retro"
+                />
+              </label>
+            </div>
+          </>
+        ) : (
+          <div className="text-sm border-2 border-dashed border-ink/20 rounded-xl px-3 py-2.5 bg-cream/60">
+            <span className="font-bold text-ink/60">🏠 Barang pribadi</span>
+            <span className="text-ink/50 font-semibold"> — jumlah otomatis 1, tanpa stok minimum.</span>
+          </div>
+        )}
       </div>
+
+      <div className="pt-1">
+        <JenisSelect value={jenis} onChange={setJenis} />
+      </div>
+
       <div className="flex gap-2 flex-wrap items-center">
         <button disabled={busy} className="btn-primary">
           {busy ? "Menyimpan..." : "Simpan"}

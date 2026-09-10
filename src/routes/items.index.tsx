@@ -2,6 +2,7 @@ import { Suspense, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import ItemForm from "../components/ItemForm";
 import BulkItemForm from "../components/BulkItemForm";
+import QuickTextItemForm from "../components/QuickTextItemForm";
 import { useItems, useCategories, useRacks } from "../hooks/api";
 import { isLowStock } from "../lib/utils";
 
@@ -15,6 +16,7 @@ function ItemsPageInner() {
   );
   const [showForm, setShowForm] = useState(false);
   const [showBulk, setShowBulk] = useState(false);
+  const [showQuickText, setShowQuickText] = useState(false);
   const [toast, setToast] = useState("");
   const [page, setPage] = useState(1);
   const { data: itemPage } = useItems({
@@ -39,27 +41,24 @@ function ItemsPageInner() {
     setTimeout(() => setToast(""), 3000);
   }
 
+  function openOnly(which: "form" | "bulk" | "quick") {
+    setShowForm(which === "form" ? !showForm : false);
+    setShowBulk(which === "bulk" ? !showBulk : false);
+    setShowQuickText(which === "quick" ? !showQuickText : false);
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-3xl">📦 Barang</h1>
-        <div className="flex gap-2">
-          <button
-            onClick={() => {
-              setShowBulk(!showBulk);
-              setShowForm(false);
-            }}
-            className="btn-teal"
-          >
+        <div className="flex gap-2 flex-wrap">
+          <button onClick={() => openOnly("quick")} className="btn-yellow">
+            ⌨️ Teks Cepat
+          </button>
+          <button onClick={() => openOnly("bulk")} className="btn-teal">
             📋 Tambah Banyak
           </button>
-          <button
-            onClick={() => {
-              setShowForm(!showForm);
-              setShowBulk(false);
-            }}
-            className="btn-primary"
-          >
+          <button onClick={() => openOnly("form")} className="btn-primary">
             + Tambah Barang
           </button>
         </div>
@@ -70,6 +69,16 @@ function ItemsPageInner() {
           categories={categories}
           onDone={() => setShowForm(false)}
           onCancel={() => setShowForm(false)}
+        />
+      )}
+
+      {showQuickText && (
+        <QuickTextItemForm
+          onDone={(created) => {
+            setShowQuickText(false);
+            showToastMsg(`✓ ${created} barang ditambahkan`);
+          }}
+          onCancel={() => setShowQuickText(false)}
         />
       )}
 
@@ -159,17 +168,28 @@ function ItemsPageInner() {
               </tr>
             ) : (
               items.map((item) => {
-                const low = isLowStock(item);
+                const pribadi = item.jenis === "pribadi";
+                const low = !pribadi && isLowStock(item);
                 return (
                   <tr key={item.id}>
                     <td>
-                      <Link
-                        to="/items/$itemId"
-                        params={{ itemId: item.id }}
-                        className="link-retro"
-                      >
-                        {item.name}
-                      </Link>
+                      <span className="inline-flex items-center gap-1.5 flex-wrap">
+                        <Link
+                          to="/items/$itemId"
+                          params={{ itemId: item.id }}
+                          className="link-retro"
+                        >
+                          {item.name}
+                        </Link>
+                        <span
+                          className={`badge-retro !text-[9px] !px-1.5 !py-0 ${
+                            pribadi ? "bg-retro-teal text-white" : "bg-retro-yellow text-ink"
+                          }`}
+                          title={pribadi ? "Barang pribadi (stok selalu 1)" : "Barang dijual"}
+                        >
+                          {pribadi ? "🏠" : "🏷️"}
+                        </span>
+                      </span>
                       {item.description && (
                         <div className="text-xs text-ink/40">{item.description}</div>
                       )}
