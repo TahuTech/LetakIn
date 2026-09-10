@@ -21,6 +21,7 @@ export type BinFormData = {
 export default function BinEditDialog({
   bin,
   position,
+  initialSpan,
   maxRowSpan,
   maxColSpan,
   itemCount,
@@ -31,6 +32,7 @@ export default function BinEditDialog({
 }: {
   bin: GridBin | null; // null = mode buat baru
   position: { row: number; col: number } | null; // posisi untuk bin baru
+  initialSpan?: { rowSpan: number; colSpan: number }; // span awal dari drag-select
   maxRowSpan: number;
   maxColSpan: number;
   itemCount: number;
@@ -40,20 +42,23 @@ export default function BinEditDialog({
   onClose: () => void;
 }) {
   const [label, setLabel] = useState(bin?.label ?? "");
-  const [rowSpan, setRowSpan] = useState(bin?.rowSpan ?? 1);
-  const [colSpan, setColSpan] = useState(bin?.colSpan ?? 1);
+  const [rowSpan, setRowSpan] = useState(bin?.rowSpan ?? initialSpan?.rowSpan ?? 1);
+  const [colSpan, setColSpan] = useState(bin?.colSpan ?? initialSpan?.colSpan ?? 1);
   const [color, setColor] = useState(bin?.color ?? "");
 
   useEffect(() => {
     setLabel(bin?.label ?? "");
-    setRowSpan(bin?.rowSpan ?? 1);
-    setColSpan(bin?.colSpan ?? 1);
+    setRowSpan(bin?.rowSpan ?? initialSpan?.rowSpan ?? 1);
+    setColSpan(bin?.colSpan ?? initialSpan?.colSpan ?? 1);
     setColor(bin?.color ?? "");
-  }, [bin, position]);
+  }, [bin, position, initialSpan]);
 
+  const isFromDrag = !bin && initialSpan && (initialSpan.rowSpan > 1 || initialSpan.colSpan > 1);
   const title = bin
     ? `Edit Bin: ${bin.label}`
-    : `Bin Baru di baris ${(position?.row ?? 0) + 1}, kolom ${(position?.col ?? 0) + 1}`;
+    : isFromDrag
+      ? `Bin Baru ${initialSpan.rowSpan}×${initialSpan.colSpan}`
+      : `Bin Baru di baris ${(position?.row ?? 0) + 1}, kolom ${(position?.col ?? 0) + 1}`;
 
   return (
     <div

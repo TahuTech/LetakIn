@@ -4,9 +4,12 @@ import { downloadBlob, filenameFromDisposition } from "../lib/utils";
 
 // ---- Types ----
 
+export type JenisBarang = "pribadi" | "dijual";
+
 export type ItemSummary = {
   id: string;
   name: string;
+  jenis: JenisBarang;
   quantity: number;
   minStock: number;
   unit: string;
@@ -100,10 +103,12 @@ export function useRack(id: string) {
   });
 }
 
+export type RackTemplate = "fill" | "rows" | "cols";
+
 export function useCreateRack() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { name: string; code: string; rows: number; cols: number }) =>
+    mutationFn: (data: { name: string; code: string; rows: number; cols: number; template?: RackTemplate }) =>
       api.post<GridRack>("/racks", data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["racks"] }),
   });
@@ -126,6 +131,31 @@ export function useDeleteRack() {
   return useMutation({
     mutationFn: (id: string) => api.delete(`/racks/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["racks"] }),
+  });
+}
+
+export function useResetGrid(rackId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      api.post<{ ok: boolean; deleted: number }>(`/racks/${rackId}/reset`, {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["racks"] }),
+  });
+}
+
+export function useAutofillGrid(rackId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      api.post<{ created: number }>(`/racks/${rackId}/autofill`, {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["racks"] }),
+  });
+}
+
+export function useAreaCheck(rackId: string) {
+  return useMutation({
+    mutationFn: (area: { row: number; col: number; rowSpan: number; colSpan: number }) =>
+      api.post<{ ok: boolean }>(`/racks/${rackId}/area-check`, area),
   });
 }
 
@@ -173,6 +203,7 @@ export function useCreateItem() {
     mutationFn: (data: {
       name: string;
       description: string;
+      jenis: JenisBarang;
       categoryId: string | null;
       binId: string | null;
       quantity: number;
@@ -193,6 +224,7 @@ export function useUpdateItem(id: string) {
     mutationFn: (data: Partial<{
       name: string;
       description: string | null;
+      jenis: JenisBarang;
       categoryId: string | null;
       binId: string | null;
       minStock: number;
@@ -325,6 +357,7 @@ export function useImportData() {
 export type BulkItemRow = {
   name: string;
   description?: string;
+  jenis?: JenisBarang;
   categoryId?: string;
   binId?: string;
   quantity?: number;
@@ -341,6 +374,25 @@ export function useBulkCreateItems() {
       qc.invalidateQueries({ queryKey: ["items"] });
       qc.invalidateQueries({ queryKey: ["racks"] });
       qc.invalidateQueries({ queryKey: ["transactions"] });
+    },
+  });
+}
+
+export type BulkTextResult = {
+  created: number;
+  categoriesCreated: string[];
+  warnings: string[];
+};
+
+export function useBulkCreateItemsText() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (lines: string[]) =>
+      api.post<BulkTextResult>("/items/bulk-text", { lines }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["items"] });
+      qc.invalidateQueries({ queryKey: ["racks"] });
+      qc.invalidateQueries({ queryKey: ["categories"] });
     },
   });
 }

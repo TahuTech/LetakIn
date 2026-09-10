@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Link, useParams } from "@tanstack/react-router";
 import RackGrid, { type GridBin } from "../components/RackGrid";
 import TransactionForm from "../components/TransactionForm";
-import { useRack } from "../hooks/api";
+import ItemForm from "../components/ItemForm";
+import { useRack, useCategories } from "../hooks/api";
 
 type Item = {
   id: string;
@@ -83,7 +84,7 @@ export function RackDetailPage() {
               👆 Klik bin di grid untuk melihat isinya.
             </p>
           ) : (
-            <BinPanel bin={selectedBin} onChanged={() => {}} />
+            <BinPanel bin={selectedBin} rackName={rack.name} onChanged={() => {}} />
           )}
         </div>
       </div>
@@ -91,8 +92,18 @@ export function RackDetailPage() {
   );
 }
 
-function BinPanel({ bin, onChanged }: { bin: GridBin; onChanged: () => void }) {
+function BinPanel({
+  bin,
+  rackName,
+  onChanged,
+}: {
+  bin: GridBin;
+  rackName: string;
+  onChanged: () => void;
+}) {
   const items = (bin.items ?? []) as Item[];
+  const [showAddItem, setShowAddItem] = useState(false);
+  const { data: categories = [] } = useCategories();
 
   return (
     <div className="space-y-3">
@@ -136,6 +147,29 @@ function BinPanel({ bin, onChanged }: { bin: GridBin; onChanged: () => void }) {
           })}
         </ul>
       )}
+
+      {/* Tambah barang langsung di bin ini */}
+      <div className="border-t-2 border-ink/10 pt-3">
+        {!showAddItem ? (
+          <button
+            onClick={() => setShowAddItem(true)}
+            className="btn-primary w-full !py-2"
+          >
+            ➕ Barang di sini
+          </button>
+        ) : (
+          <ItemForm
+            categories={categories}
+            presetBinId={bin.id}
+            lockBinLabel={`${rackName} → ${bin.label}`}
+            onDone={() => {
+              setShowAddItem(false);
+              onChanged();
+            }}
+            onCancel={() => setShowAddItem(false)}
+          />
+        )}
+      </div>
 
       <details className="border-t-2 border-ink/10 pt-3">
         <summary className="text-sm link-retro cursor-pointer font-bold">

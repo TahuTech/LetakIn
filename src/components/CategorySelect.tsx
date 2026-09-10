@@ -19,7 +19,7 @@ export default function CategorySelect({
   const [error, setError] = useState("");
   const createCategory = useCreateCategory();
 
-  async function handleAdd(e?: React.FormEvent) {
+  async function handleAdd(e?: React.FormEvent | React.KeyboardEvent) {
     e?.preventDefault();
     const name = newName.trim();
     if (!name) return;
@@ -36,10 +36,18 @@ export default function CategorySelect({
 
   if (adding) {
     return (
-      <form onSubmit={handleAdd} className="space-y-2">
+      <div className="space-y-2">
         <input
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleAdd(e);
+            if (e.key === "Escape") {
+              setAdding(false);
+              setNewName("");
+              setError("");
+            }
+          }}
           autoFocus
           placeholder="Ketik nama kategori baru..."
           className="input-retro"
@@ -47,7 +55,8 @@ export default function CategorySelect({
         />
         <div className="flex gap-2 items-center flex-wrap">
           <button
-            type="submit"
+            type="button"
+            onClick={handleAdd}
             disabled={createCategory.isPending || !newName.trim()}
             className="btn-teal !min-h-[36px] !py-1"
           >
@@ -68,7 +77,7 @@ export default function CategorySelect({
             <span className="badge-retro bg-retro-pink text-white">{error}</span>
           )}
         </div>
-      </form>
+      </div>
     );
   }
 

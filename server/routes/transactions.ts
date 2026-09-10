@@ -45,6 +45,14 @@ transactionsRouter.post("/", async (req: Request, res: Response) => {
     return;
   }
 
+  // Barang pribadi: stok terkunci 1, tidak boleh ditransaksikan
+  if (item.jenis === "pribadi") {
+    res.status(400).json({
+      error: `"${item.name}" adalah barang pribadi — stoknya selalu 1 dan tidak bisa ditransaksikan.`,
+    });
+    return;
+  }
+
   let newQty: number;
   if (type === "in") newQty = item.quantity + qty;
   else if (type === "out") {

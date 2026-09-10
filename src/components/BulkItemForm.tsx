@@ -4,6 +4,7 @@ import {
   useRacks,
   type Category,
   type BulkItemRow,
+  type JenisBarang,
 } from "../hooks/api";
 
 type Row = BulkItemRow & { _key: number };
@@ -13,9 +14,10 @@ const emptyRow = (): Row => ({
   _key: keySeq++,
   name: "",
   description: "",
+  jenis: "pribadi",
   categoryId: "",
   binId: "",
-  quantity: 0,
+  quantity: 1,
   minStock: 5,
   unit: "pcs",
 });
@@ -65,15 +67,19 @@ export default function BulkItemForm({
     }
     try {
       const res = await bulkCreate.mutateAsync(
-        namedRows.map((r) => ({
-          name: r.name.trim(),
-          description: r.description?.trim() || undefined,
-          categoryId: r.categoryId || undefined,
-          binId: r.binId || undefined,
-          quantity: Number(r.quantity) || 0,
-          minStock: Number(r.minStock) || 5,
-          unit: r.unit?.trim() || "pcs",
-        }))
+        namedRows.map((r) => {
+          const pribadi = r.jenis === "pribadi";
+          return {
+            name: r.name.trim(),
+            description: r.description?.trim() || undefined,
+            jenis: r.jenis,
+            categoryId: r.categoryId || undefined,
+            binId: r.binId || undefined,
+            quantity: pribadi ? 1 : Number(r.quantity) || 0,
+            minStock: pribadi ? 0 : Number(r.minStock) || 5,
+            unit: r.unit?.trim() || "pcs",
+          };
+        })
       );
       onDone(res.created);
     } catch (err: unknown) {
@@ -91,10 +97,11 @@ export default function BulkItemForm({
       </div>
 
       <div className="overflow-x-auto -mx-1 px-1">
-        <table className="w-full text-sm min-w-[720px]">
+        <table className="w-full text-sm min-w-[860px]">
           <thead>
             <tr className="text-left">
               <th className="label-retro !mb-0 pb-1">Nama *</th>
+              <th className="label-retro !mb-0 pb-1 w-28">Jenis</th>
               <th className="label-retro !mb-0 pb-1">Kategori</th>
               <th className="label-retro !mb-0 pb-1">Lokasi</th>
               <th className="label-retro !mb-0 pb-1 w-20">Stok</th>
@@ -104,7 +111,9 @@ export default function BulkItemForm({
             </tr>
           </thead>
           <tbody className="space-y-2">
-            {rows.map((r) => (
+            {rows.map((r) => {
+              const pribadi = r.jenis === "pribadi";
+              return (
               <tr key={r._key}>
                 <td className="pr-2 py-1">
                   <input
@@ -113,6 +122,21 @@ export default function BulkItemForm({
                     placeholder="Nama barang"
                     className="input-retro !py-1.5"
                   />
+                </td>
+                <td className="pr-2 py-1">
+                  <select
+                    value={r.jenis}
+                    onChange={(e) => {
+                      const j = e.target.value as JenisBarang;
+                      updateRow(r._key, "jenis", j);
+                      if (j === "pribadi") updateRow(r._key, "quantity", 1);
+                    }}
+                    className="input-retro !py-1.5"
+                    title={pribadi ? "Stok otomatis 1" : "Stok bebas"}
+                  >
+                    <option value="pribadi">🏠 Pribadi</option>
+                    <option value="dijual">🏷️ Dijual</option>
+                  </select>
                 </td>
                 <td className="pr-2 py-1">
                   <select
@@ -148,7 +172,9 @@ export default function BulkItemForm({
                     min={0}
                     value={r.quantity}
                     onChange={(e) => updateRow(r._key, "quantity", Number(e.target.value))}
-                    className="input-retro !py-1.5"
+                    disabled={pribadi}
+                    title={pribadi ? "Barang pribadi selalu 1" : undefined}
+                    className="input-retro !py-1.5 disabled:opacity-40 disabled:bg-cream"
                   />
                 </td>
                 <td className="pr-2 py-1">
@@ -157,7 +183,9 @@ export default function BulkItemForm({
                     min={0}
                     value={r.minStock}
                     onChange={(e) => updateRow(r._key, "minStock", Number(e.target.value))}
-                    className="input-retro !py-1.5"
+                    disabled={pribadi}
+                    title={pribadi ? "Barang pribadi tidak pakai stok minimum" : undefined}
+                    className="input-retro !py-1.5 disabled:opacity-40 disabled:bg-cream"
                   />
                 </td>
                 <td className="pr-2 py-1">
@@ -179,7 +207,8 @@ export default function BulkItemForm({
                   </button>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
